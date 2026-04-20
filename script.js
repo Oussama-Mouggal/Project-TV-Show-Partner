@@ -75,11 +75,13 @@ async function setup() {
     }
   });
 
-  const initialShowId = await initialiseShows(controls.showSelect);
-  if (initialShowId) {
+  const showInitialisation = await initialiseShows(controls.showSelect);
+  if (showInitialisation.status === "ok") {
     try {
-      allEpisodes = await fetchEpisodesByShowId(initialShowId);
-      state.selectedShowId = initialShowId;
+      allEpisodes = await fetchEpisodesByShowId(
+        showInitialisation.initialShowId,
+      );
+      state.selectedShowId = showInitialisation.initialShowId;
       updateEpisodeSelectOptions(controls.episodeSelect, allEpisodes);
       setEpisodeControlsLoading(controls, false);
     } catch (error) {
@@ -89,9 +91,12 @@ async function setup() {
       setEpisodeControlsLoading(controls, false);
       return;
     }
-  } else {
+  } else if (showInitialisation.status === "empty") {
     controls.matchCount.textContent = "No shows available right now.";
-    setEpisodeControlsLoading(controls, false);
+    return;
+  } else {
+    controls.matchCount.textContent =
+      "Could not load shows right now. Please try again later.";
     return;
   }
 
@@ -139,15 +144,15 @@ async function initialiseShows(showSelect) {
 
     populateShowSelect(showSelect, sortedShows);
     if (sortedShows.length === 0) {
-      return "";
+      return { status: "empty" };
     }
 
     const firstShowId = String(sortedShows[0].id);
     showSelect.value = firstShowId;
-    return firstShowId;
+    return { status: "ok", initialShowId: firstShowId };
   } catch (error) {
     console.error("Could not load shows", error);
-    return "";
+    return { status: "error" };
   }
 }
 
